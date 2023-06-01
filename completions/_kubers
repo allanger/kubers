@@ -1,0 +1,43 @@
+#compdef kubers
+
+# ------------------------------------------------------------------------
+# -- Copyright 2023 Nikolai Rodionov (allanger)
+# ------------------------------------------------------------------------
+# -- @allanger 
+# --  I know that this code is ugly as heck, 
+# --  but I don't know how to fix it  :(
+# ------------------------------------------------------------------------
+NAMESPACE=$(kubectl config view --minify -o jsonpath='{..namespace}')
+
+funcion _kubers() {
+    local state
+    _arguments -C \
+                "-n[Kubernetes namespace]:namespace:->namespace" \
+                 "1: :->secret" \
+                 "2::entry:->entry"
+    case "$state" in
+      namespace)
+        _values compadd $(kubectl get namespaces --no-headers -o custom-columns=":metadata.name")
+        ;;
+      secret)
+        for (( i = 1; i <= $#words - 1; i++ )); do
+            if [[ $words[$i] == -n || $words[$i] == --namespace  ]]; then
+                NAMESPACE=$words[$((i+1))]
+                break
+            fi
+        done
+        _values compadd $(kubectl --namespace $NAMESPACE get secrets --no-headers -o custom-columns=":metadata.name")
+        ;;
+      entry)
+        SECRET_NAME=$words[2]
+        for (( i = 1; i <= $#words - 1; i++ )); do
+            if [[ $words[$i] == -n || $words[$i] == --namespace  ]]; then
+                INDEX=$i
+                SECRET_NAME=$words[$((i+2))]
+                break
+            fi
+        done
+        _values compadd $(for KEY in $(kubectl --namespace $NAMESPACE get secret $SECRET_NAME -o yaml | yq '.data | keys' | sed -e "s/- //"); do echo $KEY; done)
+        ;;
+      esac
+}

@@ -1,0 +1,115 @@
+#!/bin/bash
+# ------------------------------------------------------------------------
+# -- Copyright 2023 Nikolai Rodionov (allanger)
+# ------------------------------------------------------------------------
+set -e
+KUBERS_VERSION=0.1.0
+# ------------------------------------
+# -- Internal function for generating
+# -- the "$KEY: $VALUE" string
+# ------------------------------------
+function append_to_secret() {
+  SECRET=$1
+  KEY=$2
+  VALUE=$(kubectl -n $NAMESPACE get secret $SECRET -o yaml| yq ".data.\"$KEY\"" | base64 -d)
+  if (( $(grep -c . <<<"$VALUE") > 1 )); then
+    SECRET="$KEY: |-\n$(echo $VALUE| sed -e 's/^/  /')"
+  else
+    SECRET="$KEY: $VALUE"
+  fi
+  printf "$SECRET"
+}
+
+function show_help() {
+  cat <<EOF
+---
+kubers is a super simple tool that reveals k8s secrets using kubectl and yq
+
+Usage:
+  kubers [-V | --version] [-h | --help] [-n | --namespace <namespace>] [-c <name>=<value>]
+           <secret_name> [<entry_name>]
+
+Examples:
+  If you want to reveal all entries in the current k8s namespace
+  $ kubers $SECRET_NAME
+
+  If you want to reveal only one entry from the secret in the current namepspace 
+  $ kubers $SECRET_NAME $SECRET_VALUE
+
+  If you want to reveal a secret from another namespace 
+  $ kubers -n $NAMESPACE $SECRET_NAME
+
+---
+EOF
+}
+# ---------------------------------------------------------------------
+# -- Parse arguments
+# ---------------------------------------------------------------------
+UNNAMED_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -n|--namespace)
+      # ---------------------------------------------------------------
+      # -- Set the namespace that you want to get the secret from
+      # ---------------------------------------------------------------
+      NAMESPACE="$2"
+      # ---------------------------------------------------------------
+      # -- Check if namespace exists
+      # ---------------------------------------------------------------
+      kubectl get namespace $NAMESPACE > /dev/null
+      shift
+      shift
+      ;;
+    -V|--version)
+    printf "Kubers version is $KUBERS_VERSION\n"
+    exit 0
+    ;;
+    -h|--help)
+    show_help
+    exit 0
+    ;;
+    -*|--*)
+      echo "Unknown option $1"
+      exit 1
+      ;;
+    *)
+      # ---------------------------------------------------------------
+      # -- Don't forget args that are passed without flags
+      # ---------------------------------------------------------------
+      UNNAMED_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+# ---------------------------------------------------------------------
+# -- If namespace is not set, the use the current namespace
+# ---------------------------------------------------------------------
+if [[ -z $NAMESPACE ]]; then
+  NAMESPACE=$(kubectl config view --minify -o jsonpath='{..namespace}')
+fi
+# ---------------------------------------------------------------------
+# -- Set the secret name an entry (optional)
+# ---------------------------------------------------------------------
+SECRET_NAME=${UNNAMED_ARGS[0]} 
+SECRET_ENTRY=${UNNAMED_ARGS[1]}
+# ---------------------------------------------------------------------
+# -- Main logic starts here
+# ---------------------------------------------------------------------
+if [[ -z $SECRET_NAME ]]; then
+  show_help
+  printf "You must provide a secret name. Choose one of these\n\n"
+  kubectl -n $NAMESPACE get secrets --no-headers -o custom-columns=":metadata.name"
+  exit 1
+fi
+
+SECRET=()
+if [[ $SECRET_ENTRY != "" ]]; then
+  SECRET+=$(append_to_secret $SECRET_NAME $SECRET_ENTRY)
+else
+  for SECRET_ENTRY in $(kubectl -n $NAMESPACE get secret $SECRET_NAME -o yaml | yq '.data | keys' | sed -e "s/- //"); do
+    SECRET+=("$(append_to_secret $SECRET_NAME $SECRET_ENTRY)");
+  done
+fi
+
+printf "%s\n"  "${SECRET[@]}" | yq
+
