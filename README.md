@@ -1,0 +1,3 @@
+# kubers
+
+Kubectl reveal secrets
