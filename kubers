@@ -61,7 +61,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -V|--version)
-    printf "Kubers version is $KUBERS_VERSION\n"
+    printf "$KUBERS_VERSION\n"
     exit 0
     ;;
     -h|--help)

@@ -1,0 +1,28 @@
+kind: pipeline
+name: Release kubers
+type: docker
+
+trigger:
+  branch:
+    - main
+  event:
+    - push
+
+steps:
+- name: prepare build
+  image: alpine
+  commands: 
+    - mkdir dist
+    - cp ./kubers ./dist
+    - cp ./completions/_kubers ./dist
+    - ./kubers --version > version.txt 
+
+- name: gitea release
+  image: plugins/gitea-release
+  settings:
+    api_key:  
+      from_secret: GITEA_SECRET
+    base_url: https://git.badhouseplants.net
+    files: dist/*
+    checksum: sha512
+    title: ./version.txt
