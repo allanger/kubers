@@ -12,6 +12,7 @@ steps:
 - name: prepare build
   image: alpine
   commands: 
+    - apk update && apk add bash
     - mkdir dist
     - cp ./kubers ./dist
     - cp ./completions/_kubers ./dist
