@@ -13,17 +13,17 @@ Examples:
   If you want to reveal all entries in the current k8s namespace
   
   ```
-  $ kubers 
+  $ kubers $SECRET_NAME
   ```
   
   If you want to reveal only one entry from the secret in the current namepspace 
  
   ```
-  $ kubers  
+  $ kubers $SECRET_NAME $SECRET_ENTRY
   ```
 
   If you want to reveal a secret from another namespace 
 
   ```
-  $ kubers -n  
+  $ kubers -n  $SECRET_NAME
   ```
