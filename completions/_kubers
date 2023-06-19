@@ -20,6 +20,7 @@ funcion _kubers() {
         _values compadd $(kubectl get namespaces --no-headers -o custom-columns=":metadata.name")
         ;;
       secret)
+        NAMESPACE=$(kubectl config view --minify -o jsonpath='{..namespace}')
         for (( i = 1; i <= $#words - 1; i++ )); do
             if [[ $words[$i] == -n || $words[$i] == --namespace  ]]; then
                 NAMESPACE=$words[$((i+1))]
