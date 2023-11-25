@@ -7,7 +7,7 @@
 # --  I know that this code is ugly as heck, 
 # --  but I don't know how to fix it  :(
 # ------------------------------------------------------------------------
-NAMESPACE=$(kubectl config view --minify -o jsonpath='{..namespace}')
+NAMESPACE=$(kubectl config view --minify -o jsonpath='{..namespace}' || "default")
 
 funcion _kubers() {
     local state
